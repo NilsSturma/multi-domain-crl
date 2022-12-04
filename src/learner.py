@@ -4,7 +4,8 @@ from sklearn.decomposition import FastICA
 from scipy.stats import wasserstein_distance
 
 # === IMPORTS: LOCAL ===
-from src.utils import third_moments_distance, minimum_matching
+from src.dist import third_moments_distance
+from src.matching import minimum_matching
 
 class LinearMDCRL:
 
@@ -130,11 +131,6 @@ class LinearMDCRL:
         signs = [1]
         for i in range(1,len(f)):
             signs.append(self.matching_sign(self.indep_comps[0][:,f[0]], self.indep_comps[i][:,f[i]]))  
-        # Check for consistency
-        for i in range(1, len(f)):
-            for j in range(i+1, len(f)):
-                if signs[i]*signs[j] != self.matching_sign(self.indep_comps[i][:,f[i]], self.indep_comps[j][:,f[j]]):
-                    raise ValueError("Signs are not consistent: ", i, j)
         return signs
     
     @staticmethod
