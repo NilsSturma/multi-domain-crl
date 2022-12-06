@@ -29,7 +29,7 @@ class LinearMDCRL:
         self.get_sources()
         self.match()
         self.get_joint_mixing()
-        #self.get_joint_graph()
+        self.get_joint_graph()
 
     def get_sources(self):
         self.nr_env = len(self.data)
@@ -100,12 +100,30 @@ class LinearMDCRL:
             current_row = current_row + nrows
         self.joint_mixing = M_large
 
-    def get_joint_graph(self):
-        pass
 
-    ########################
-    ### helper functions ###
-    ########################
+    def get_joint_graph(self):
+
+        B = self.joint_mixing[:,:self.nr_joint]
+        
+        # Find one pure child per latent node
+        B_star = self.get_pure_children(B)
+
+        # Remove permutation indeterminacy
+        order_rows, order_cols = self.search_order_noisy(B_star)
+        if order_rows is not None:
+            B_star = B_star[order_rows, :][:, order_cols]
+        # Remove sign indeterminacy from columns
+        B_star = np.matmul(B_star, np.diag(np.sign(np.diag(B_star))))
+
+        # Remove scaling indeterminacy from rows  and solve for A
+        B_star = np.matmul(np.diag(1/np.diag(B_star)), B_star)
+
+        # Solve for A
+        self.A = (np.eye(B_star.shape[0]) - np.linalg.inv(B_star))
+
+    #########################################
+    ### helper functions for joint mixing ###
+    #########################################
     def signed_distance_matrix(self, X1, X2):
         p1 = X1.shape[1]
         p2 = X2.shape[1]
@@ -149,3 +167,121 @@ class LinearMDCRL:
         for i in range(eps.shape[1]):
             eps[:,i] = (eps[:,i] - eps[:,i].mean()) / eps[:,i].std()
         return eps
+
+    ###########################################
+    ### helper functions for graph recovery ###
+    ###########################################
+
+    @staticmethod
+    def score_rows(matrix):
+        d = matrix.shape[0]
+        R = np.full(shape=(d,d),fill_value=.0)
+        for i in range(d):
+            for j in range(i+1,d):
+                u, s, v = np.linalg.svd(matrix[[i,j],:])
+                #s2 = np.sort(s) ** 2
+                #R[i,j] = s2[-1] / s2.sum()
+                R[i,j] = 1/(min(s)+0000000.1)
+        return R
+
+    @staticmethod
+    def get_duplicates(cand_ids, ord_tup):
+        l = len(cand_ids)
+        ids0 = ord_tup[0][cand_ids]
+        ids1 = ord_tup[1][cand_ids]
+        uniques = np.unique(np.concatenate((ids0, ids1), axis=0))
+        if len(uniques)==(2*l):
+            return None
+        else:
+            for i in range(l):
+                for j in range(i+1,l):
+                    if (ids0[i]==ids0[j]) or (ids0[i]==ids1[j]):
+                        return cand_ids[j]
+
+    @staticmethod
+    def get_low_rank(cand_ids, ord_tup, R, level=0.95):
+        l = len(cand_ids)
+        ids0 = ord_tup[0][cand_ids]
+        ids1 = ord_tup[1][cand_ids]
+        #print(ids0,  ids1)
+        for i in range(l):
+            for j in range(i+1,l):
+                if (R[ids0[i],ids0[j]] > level) or (R[ids0[i],ids1[j]] > level):
+                    #print(i,j,R[ids0[i],ids0[j]],R[ids0[i],ids1[j]])
+                    return cand_ids[i], cand_ids[j]
+        return None 
+
+    @staticmethod
+    def update_cand_ids(cand_ids, to_remove):
+        current_max = max(cand_ids)
+        cand_ids.remove(to_remove)
+        cand_ids.append(current_max+1)
+        return(cand_ids)
+
+    def get_pure_children(self, B):
+    
+        # Score all pairs of rows
+        R = self.score_rows(B)
+        d = R.shape[0]
+        nr_tuples = int(d * (d-1) / 2)
+        
+        ord_tup = np.unravel_index(R.ravel().argsort(), R.shape)
+        ord_tup = (np.flip(ord_tup[0][nr_tuples:]), 
+                np.flip(ord_tup[1][nr_tuples:]))
+        
+        # Make R symmetric now (important)
+        for i in range(d):
+            for j in range(i+1,d):
+                R[j,i]=R[i,j]
+                
+        # Choose rows that maximize thw "within-tuple" score and at the same time have a low "inter-tuple" score 
+        cand_ids = list(np.arange(self.nr_joint))
+        while max(cand_ids) < nr_tuples:
+            to_remove = self.get_duplicates(cand_ids, ord_tup)
+            if to_remove is not None:
+                cand_ids = self.update_cand_ids(cand_ids, to_remove)
+                continue
+            to_remove = self.get_low_rank(cand_ids, ord_tup, R, level=10)
+            if to_remove is not None:
+                temp_cands = cand_ids.copy()
+                temp_cands = self.update_cand_ids(temp_cands, to_remove[0])
+                if self.get_low_rank(temp_cands, ord_tup, R, level=10) is None:
+                    cand_ids = self.update_cand_ids(cand_ids, to_remove[0])
+                else:
+                    cand_ids = self.update_cand_ids(cand_ids, to_remove[1])
+                continue
+            break   
+        pure_children_rows = ord_tup[0][cand_ids]
+        pure_children_rows
+        
+        return B[pure_children_rows,:]  
+
+    @staticmethod
+    def l2_without_max(x):
+        m = np.abs(x).argmax()
+        mask = np.ones(len(x), dtype=bool)
+        mask[m] = False
+        return np.linalg.norm(x[mask])
+
+    def search_order_noisy(self, matrix):
+        d = matrix.shape[0]
+        order_rows = []
+        order_cols = []
+        original_idx_rows = np.arange(d)  
+        original_idx_cols = np.arange(d)  
+        while 0 < matrix.shape[0]:
+            # Find row with lowest l2 norm where all entries but the maximum are considered
+            target_row = np.apply_along_axis(self.l2_without_max, 1, matrix).argmin()
+            target_col = abs(matrix[target_row,:]).argmax()
+            # Append index to order
+            order_rows.append(original_idx_rows[target_row])
+            order_cols.append(original_idx_cols[target_col])
+            original_idx_rows = np.delete(original_idx_rows, target_row)
+            original_idx_cols = np.delete(original_idx_cols, target_col)
+            # Remove the row and the column from B
+            row_mask = np.delete(np.arange(matrix.shape[0]), target_row)
+            col_mask = np.delete(np.arange(matrix.shape[1]), target_col)
+            matrix = matrix[row_mask,:][:, col_mask]
+        if len(order_rows) != d:
+                return None, None
+        return order_rows, order_cols
