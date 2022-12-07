@@ -1,11 +1,14 @@
 # === IMPORTS: THIRD-PARTY ===
 import numpy as np
+from itertools import combinations
 from sklearn.decomposition import FastICA
 from scipy.stats import wasserstein_distance
 
 # === IMPORTS: LOCAL ===
 from src.dist import third_moments_distance
 from src.matching import minimum_matching
+from src.scoring import score_up_to_signed_perm, get_permutation_matrix, permutations_respecting_graph
+
 
 class LinearMDCRL:
 
@@ -88,11 +91,13 @@ class LinearMDCRL:
         # Domain-specific columns
         current_col = len(self.joint_factors)
         current_row = 0
+        self.dom_spec_nr_lat = []
         for env in range(self.nr_env):
             M = self.mixings[env]
             nrows, ncols = M.shape
             joint_cols = [f[env] for f in self.joint_factors]
             domain_spec_cols = set(np.arange(ncols)) - set(joint_cols)
+            self.dom_spec_nr_lat.append(len(domain_spec_cols))
             for i, col in enumerate(domain_spec_cols):
                 M_large[np.ix_(np.arange(current_row,(current_row+nrows)),np.array([current_col+i]))] \
                 = M[:,col].reshape((nrows,1))
@@ -120,6 +125,44 @@ class LinearMDCRL:
 
         # Solve for A
         self.A = (np.eye(B_star.shape[0]) - np.linalg.inv(B_star))
+
+
+    def score_joint_mixing_complete(self, B_true):
+        B_perm = self.joint_mixing.copy()
+        # Score joint mixing
+        res = score_up_to_signed_perm(self.joint_mixing[:,:self.nr_joint], B_true[:,:self.nr_joint])
+        B_perm[:,:self.nr_joint] = res[1]
+        # Score domain-specific ones
+        current_col = self.nr_joint
+        for i in range(self.nr_env):
+            nlatents = self.dom_spec_nr_lat[i]
+            res = score_up_to_signed_perm(self.joint_mixing[:,current_col:(current_col+nlatents)], 
+                                        B_true[:,current_col:(current_col+nlatents)])
+            B_perm[:,current_col:(current_col+nlatents)] = res[1]
+            current_col = current_col+nlatents
+        final_score = np.linalg.norm(B_perm - B_true)
+        return (final_score, B_perm)
+
+
+    def score_only_joint_columns(self, B_true):
+        est_nr_joint = self.joint_mixing.shape[1]
+        min_error = float('inf')
+        for comb in combinations(range(self.nr_joint), est_nr_joint):
+            res = score_up_to_signed_perm(self.joint_mixing[:,], B_true[:,comb])
+            if res[0] < min_error:
+                min_error = res[0]
+        return min_error
+
+    def score_graph_param_matrix(self, A_true):
+        min_error = float('inf')
+        for perm in permutations_respecting_graph(A_true):
+            P = get_permutation_matrix(perm)
+            A_hat_perm = P @ self.A @ P.T
+            error = np.linalg.norm(A_hat_perm - A_true)
+            if error < min_error:
+                min_error = error
+                best_solution = (min_error, A_hat_perm)
+        return best_solution
 
     #########################################
     ### helper functions for joint mixing ###
