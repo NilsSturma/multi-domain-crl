@@ -99,21 +99,89 @@ def create_model_scip(env2dim: dict, weights):
 
     model.setObjective(quicksum(weight_terms), "minimize")
 
-    return model
+    return model, indicators
 
 
 if __name__ == "__main__":
     env2dim = {0: 3, 1: 4, 2: 4}
     indicators = dict()
 
-    np.random.seed(121231)
-    weights = dict()
-    for e, f in itr.combinations(env2dim, 2):
-        for j_e in range(env2dim[e]):
-            for j_f in range(env2dim[f]):
-                weights[(e, j_e), (f, j_f)] = np.random.uniform()
+    import networkx as nx
 
+    def random_clusters(env2dim: dict):
+        p = min(env2dim.values())
 
-    model = create_model_scip(env2dim, weights)
+        clusters = [[(0, i)] for i in range(p)]
+        for env in range(1, len(env2dim)):
+            perm = np.random.permutation(list(range(env2dim[env])))
+            for i in range(p):
+                clusters[i].append((env, perm[i]))
+        
+        return clusters
+
+    def clusters2weights(env2dim, clusters: list):
+        weights = dict()
+
+        # === ASSIGN WEIGHT ZERO FOR ALL VARIABLES IN DIFFERENT CLUSTERS
+        for env1, env2 in itr.combinations(env2dim, 2):
+            for ix1, ix2 in itr.product(range(env2dim[env1]), range(env2dim[env2])):
+                weights[(env1, ix1), (env2, ix2)] = 0
+
+        # === ASSIGN WEIGHT ONE FOR ALL VARIABLES IN SAME CLUSTERS
+        for cluster in clusters:
+            for (env1, ix1), (env2, ix2) in itr.combinations(cluster, 2):
+                weights[(env1, ix1), (env2, ix2)] = 1
+        
+        return weights
+
+    clusters = random_clusters(env2dim)
+    weights = clusters2weights(env2dim, clusters)
+    # from scipy.stats import beta, uniform, expon, lognorm, weibull_min, chi2, t, gumbel_r, skewnorm
+
+    # from experiments.rand import rand_model
+
+    # model_specs = {
+    #     "nr_doms": 3,
+    #     "joint_idx": [0, 1, 2],
+    #     "domain_spec_idx": [[3], [4], [5]],
+    #     "noise_rvs": [
+    #         beta(2,3), 
+    #         expon(scale=0.1), 
+    #         skewnorm(a=6), 
+    #         gumbel_r,
+    #         lognorm(s=1), 
+    #         weibull_min(c=2), 
+    #         chi2(df=6)
+    #     ],
+    #     "sample_sizes":  [10000, 10000, 10000],
+    #     "dims": [10, 10, 10],
+    #     "graph_density": 0.75,
+    #     "mixing_density": 0.9,
+    #     "mixing_distribution": 'unif',  # unif or normal
+    #     "indep_domain_spec": True
+    # }
+    # data, g, B_large = rand_model(model_specs)
+
+    # np.random.seed(121231)
+    # weights = dict()
+    # for e, f in itr.combinations(env2dim, 2):
+    #     for j_e in range(env2dim[e]):
+    #         for j_f in range(env2dim[f]):
+    #             weights[(e, j_e), (f, j_f)] = np.random.uniform()
+
+    def solution2clusters(sol, env2dim):
+        p = min(env2dim.values())
+        g = nx.Graph()
+
+        for env, dim in env2dim.items():
+            for ix in range(dim):
+                for k in range(p):
+                    if sol[f"t_A_{env}{ix}^{k}"] == 1:
+                        g.add_edge((env, ix), k)
+        breakpoint()
+
+    model, indicators = create_model_scip(env2dim, weights)
     model.optimize()
     sol = model.getBestSol()
+
+    # solution2clusters(sol, env2dim)
