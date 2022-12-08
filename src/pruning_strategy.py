@@ -173,9 +173,9 @@ if __name__ == "__main__":
         p = min(env2dim.values())
         g = nx.Graph()
 
-        for e, dim in env2dim.items():
-            for j_e in range(dim):
-                for k in range(p):
+        for k in range(p):
+            for e, dim in env2dim.items():
+                for j_e in range(dim):
                     indicator = indicators[(k, e, j_e)]
                     if sol[indicator] == 1:
                         g.add_edge((e, j_e), k)
