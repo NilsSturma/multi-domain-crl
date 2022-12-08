@@ -1,27 +1,18 @@
 # === IMPORTS: THIRD-PARTY ===
 import numpy as np
+from itertools import combinations
 from sklearn.decomposition import FastICA
-from scipy.stats import wasserstein_distance
+from scipy.stats import wasserstein_distance, ks_2samp
 
 # === IMPORTS: LOCAL ===
-from src.dist import third_moments_distance
-from src.matching import minimum_matching
+from src.scoring import score_up_to_signed_perm, get_permutation_matrix, permutations_respecting_graph
+
 
 class LinearMDCRL:
 
-    def __init__(self, metric="1-wasserstein", matching="minimum"):
+    def __init__(self, measure="ks-test"):
 
-        if metric=="1-wasserstein":
-            self.metric = wasserstein_distance
-        elif metric=="third-moments":
-            self.metric = third_moments_distance
-        else:
-            raise NotImplementedError("Metric not implemented")
-
-        if matching=="minimum":
-            self.matching = minimum_matching
-        else:
-            raise NotImplementedError("Matching not implemented")
+        self.measure = measure
 
     def fit(self, data):
          # Each element in data is a matrix of shape n_e x d_e
@@ -29,7 +20,8 @@ class LinearMDCRL:
         self.get_sources()
         self.match()
         self.get_joint_mixing()
-        self.get_joint_graph()
+        if len(self.joint_factors) > 0:
+            self.get_joint_graph()
 
     def get_sources(self):
         self.nr_env = len(self.data)
@@ -38,7 +30,7 @@ class LinearMDCRL:
         for X in self.data:
             cov = np.cov(np.transpose(X))
             rk = np.linalg.matrix_rank(cov)
-            ICA = FastICA(n_components=rk, whiten='unit-variance', max_iter=1000) 
+            ICA = FastICA(n_components=rk, whiten='unit-variance', max_iter=10000) 
             ICA.fit(X)
             eps = ICA.transform(X)
             scaling = eps.std(axis=0)
@@ -52,8 +44,8 @@ class LinearMDCRL:
         matchings = {}
         for i in range(self.nr_env):
             for j in range(i+1, self.nr_env):
-                D = self.signed_distance_matrix(self.indep_comps[i],self.indep_comps[j])
-                matchings[str(i)+str(j)] = self.matching(D)
+                S = self.signed_similarity_matrix(self.indep_comps[i],self.indep_comps[j])
+                matchings[str(i)+str(j)] = self.maximum_matching(S)
         
         # Define potential factors
         pot_factors = [[i] for i in list(matchings['01'].keys())] 
@@ -88,11 +80,13 @@ class LinearMDCRL:
         # Domain-specific columns
         current_col = len(self.joint_factors)
         current_row = 0
+        self.dom_spec_nr_lat = []
         for env in range(self.nr_env):
             M = self.mixings[env]
             nrows, ncols = M.shape
             joint_cols = [f[env] for f in self.joint_factors]
             domain_spec_cols = set(np.arange(ncols)) - set(joint_cols)
+            self.dom_spec_nr_lat.append(len(domain_spec_cols))
             for i, col in enumerate(domain_spec_cols):
                 M_large[np.ix_(np.arange(current_row,(current_row+nrows)),np.array([current_col+i]))] \
                 = M[:,col].reshape((nrows,1))
@@ -116,31 +110,93 @@ class LinearMDCRL:
         B_star = np.matmul(B_star, np.diag(np.sign(np.diag(B_star))))
 
         # Remove scaling indeterminacy from rows  and solve for A
-        B_star = np.matmul(np.diag(1/np.diag(B_star)), B_star)
+        D = np.diag(B_star)
+        if 0 in D:
+            D = D + 1e-20
+        B_star = np.matmul(np.diag(1/D), B_star)
 
         # Solve for A
+        if np.linalg.matrix_rank(B_star) < self.nr_joint:
+            B_star = B_star + np.diag(np.full(self.nr_joint, 1e-20))
         self.A = (np.eye(B_star.shape[0]) - np.linalg.inv(B_star))
+
+
+    def score_joint_mixing_complete(self, B_true):
+        B_perm = self.joint_mixing.copy()
+        # Score joint mixing
+        res = score_up_to_signed_perm(self.joint_mixing[:,:self.nr_joint], B_true[:,:self.nr_joint])
+        B_perm[:,:self.nr_joint] = res[1]
+        # Score domain-specific ones
+        current_col = self.nr_joint
+        for i in range(self.nr_env):
+            nlatents = self.dom_spec_nr_lat[i]
+            res = score_up_to_signed_perm(self.joint_mixing[:,current_col:(current_col+nlatents)], 
+                                        B_true[:,current_col:(current_col+nlatents)])
+            B_perm[:,current_col:(current_col+nlatents)] = res[1]
+            current_col = current_col+nlatents
+        final_score = np.linalg.norm(B_perm - B_true)
+        return (final_score, B_perm)
+
+
+    def score_only_joint_columns(self, B_true, true_nr_joint):
+        min_error = float('inf')
+        for comb in combinations(range(true_nr_joint), self.nr_joint):
+            res = score_up_to_signed_perm(self.joint_mixing[:,], B_true[:,comb])
+            if res[0] < min_error:
+                min_error = res[0]
+        return min_error
+
+    def score_graph_param_matrix(self, A_true):
+        min_error = float('inf')
+        for perm in permutations_respecting_graph(A_true):
+            P = get_permutation_matrix(perm)
+            A_hat_perm = P @ self.A @ P.T
+            error = np.linalg.norm(A_hat_perm - A_true)
+            if error < min_error:
+                min_error = error
+                best_solution = (min_error, A_hat_perm)
+        return best_solution
 
     #########################################
     ### helper functions for joint mixing ###
     #########################################
-    def signed_distance_matrix(self, X1, X2):
+
+    def similarity_measure(self, a, b):
+        if self.measure=="1-wasserstein":
+            return 1 - wasserstein_distance(a,b)
+        elif self.measure=="ks-test":
+            return ks_2samp(a, b).pvalue
+        else:
+            raise NotImplementedError("Metric not implemented")
+        
+    def signed_similarity_matrix(self, X1, X2):
         p1 = X1.shape[1]
         p2 = X2.shape[1]
-        D_large = np.zeros((p1,2*p2))
+        S_large = np.zeros((p1,2*p2))
         X2_large = np.concatenate((X2,-X2),axis=1)
         for i in range(p1):
             for j in range(2*p2):
-                D_large[i,j] = self.metric(X1[:,i],X2_large[:,j]) 
-        D = np.zeros((p1,p2))
+                S_large[i,j] = self.similarity_measure(X1[:,i],X2_large[:,j]) 
+        S = np.zeros((p1,p2))
         for i in range(p2):
-            D[:,i] = D_large[:,[i,i+p2]].min(axis=1)
-        return D
+            S[:,i] = S_large[:,[i,i+p2]].max(axis=1)
+        return S
+
+    @staticmethod
+    def maximum_matching(similarity_matrix, level=0.05):
+        p = similarity_matrix.shape[0]
+        matching = {}
+        for i in range(p):
+            row_argmax = similarity_matrix[i,:].argmax()
+            row_max = similarity_matrix[i,:].max()
+            if (similarity_matrix[:,row_argmax].argmax() == i) and (row_max >= level):
+                matching[i] = row_argmax
+        return matching
 
     def matching_sign(self, distr1, distr2):
-        normal_dist = self.metric(distr1,distr2) 
-        flipped_dist = self.metric(distr1,-distr2)
-        if normal_dist <= flipped_dist:
+        normal_sim = self.similarity_measure(distr1,distr2) 
+        flipped_sim = self.similarity_measure(distr1,-distr2)
+        if normal_sim >= flipped_sim:
             return 1
         else:
             return -1 

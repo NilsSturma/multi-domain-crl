@@ -24,7 +24,7 @@ def check_model_consistency(m):
     # Check keys
     list(m.keys()) == ['nr_doms', 'joint_idx', 'domain_spec_idx', 'noise_rvs', 
         'sample_sizes', 'dims', 'graph_density', 'mixing_density', 'mixing_distribution', 
-        'indep_domain_spec']
+        'two_pure_children']
 
     # Check for correct length of parameter lists
     if (m["nr_doms"] != len(m["domain_spec_idx"])) \
@@ -51,7 +51,6 @@ def pos_pure_children(G, nr_joints):
             if np.sum(np.abs(G_joint[i,mask])) == 0:
                 G[i,m] = abs(G[i,m])
         return G
-
 
 def rand_G(shape, pure_children=0, nr_joints=0, density=0.75, distribution='normal'):
     G = np.zeros(shape)
@@ -81,8 +80,6 @@ def rand_model(m):
     noise_vars = [m["joint_idx"] + dom_specifics for dom_specifics in m["domain_spec_idx"]]
     
     # Create graph among joint latent variables
-    if not m["indep_domain_spec"]:
-        raise NotImplementedError("Method not implemented for non-independent domain-specific variables.")
     g = cd.rand.directed_erdos(nr_joints, density=m["graph_density"], random_order=False)
     g = cd.rand.rand_weights(g)
     A = np.transpose(g.to_amat())
@@ -98,12 +95,12 @@ def rand_model(m):
         eps = np.zeros((n,len(dom_rvs)))
         for j, rv in enumerate(dom_rvs):
             eps[:,j] = sample_normed(n,rv)
-        if i==0:
+        if m["two_pure_children"] and (i==0):
             if m["nr_doms"]==1:
                 pure_children = 2
             else:
                 pure_children = 1
-        elif i==1:
+        elif m["two_pure_children"] and (i==1):
             pure_children = 1
         else:
             pure_children = 0
