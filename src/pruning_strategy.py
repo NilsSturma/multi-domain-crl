@@ -94,10 +94,10 @@ def create_model_scip(env2dim: dict, weights):
                     ind_e = indicators[(k, e, j_e)]
                     ind_f = indicators[(k, f, j_e)]
                     joint_ind = model.addVar(vtype="B", name=f"A_{e}{j_e},{f}{j_f}^k")
-                    model.addCons(ind_e + ind_f == joint_ind)
+                    model.addCons(ind_e * ind_f == joint_ind)
                     weight_terms.append(joint_ind * weights[(e, j_e), (f, j_f)])
 
-    model.setObjective(quicksum(weight_terms), "minimize")
+    model.setObjective(quicksum(weight_terms), "maximize")
 
     return model, indicators
 
@@ -169,19 +169,26 @@ if __name__ == "__main__":
     #         for j_f in range(env2dim[f]):
     #             weights[(e, j_e), (f, j_f)] = np.random.uniform()
 
-    def solution2clusters(sol, env2dim):
+    def solution2clusters(sol, indicators, env2dim: dict):
         p = min(env2dim.values())
         g = nx.Graph()
 
-        for env, dim in env2dim.items():
-            for ix in range(dim):
+        for e, dim in env2dim.items():
+            for j_e in range(dim):
                 for k in range(p):
-                    if sol[f"t_A_{env}{ix}^{k}"] == 1:
-                        g.add_edge((env, ix), k)
-        breakpoint()
+                    indicator = indicators[(k, e, j_e)]
+                    if sol[indicator] == 1:
+                        g.add_edge((e, j_e), k)
+
+        estimated_clusters = list(nx.connected_components(g))
+        
+        return estimated_clusters
 
     model, indicators = create_model_scip(env2dim, weights)
     model.optimize()
     sol = model.getBestSol()
 
-    # solution2clusters(sol, env2dim)
+    estimated_clusters = solution2clusters(sol, indicators, env2dim)
+
+    for cluster in estimated_clusters:
+        pass
