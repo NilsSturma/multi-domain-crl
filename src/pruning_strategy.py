@@ -66,6 +66,7 @@ def create_model_scip(env2dim: dict, weights):
     model = Model("minimum")
     p = min(env2dim.values())
 
+    # === CREATE THE DECISION VARIABLES
     indicators = dict()
     for k in range(p):
         for e, dim in env2dim.items():
@@ -87,15 +88,18 @@ def create_model_scip(env2dim: dict, weights):
 
     # === CREATE THE OBJECTIVE
     weight_terms = []
+    weight_total = 0
     for k in range(p):
         for e, f in itr.combinations(env2dim, 2):
             for j_e in range(env2dim[e]):
                 for j_f in range(env2dim[f]):
                     ind_e = indicators[(k, e, j_e)]
-                    ind_f = indicators[(k, f, j_e)]
-                    joint_ind = model.addVar(vtype="B", name=f"A_{e}{j_e},{f}{j_f}^k")
+                    ind_f = indicators[(k, f, j_f)]
+                    joint_ind = model.addVar(vtype="B", name=f"A_{e}{j_e},{f}{j_f}^{k}")
                     model.addCons(ind_e * ind_f == joint_ind)
-                    weight_terms.append(joint_ind * weights[(e, j_e), (f, j_f)])
+                    weight = weights[(e, j_e), (f, j_f)]
+                    weight_total += weight
+                    weight_terms.append(joint_ind * weight)
 
     model.setObjective(quicksum(weight_terms), "maximize")
 
@@ -107,6 +111,10 @@ if __name__ == "__main__":
     indicators = dict()
 
     import networkx as nx
+    import random
+
+    np.random.seed(1231)
+    random.seed(1231)
 
     def random_clusters(env2dim: dict):
         p = min(env2dim.values())
