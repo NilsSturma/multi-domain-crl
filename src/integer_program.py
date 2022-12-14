@@ -3,6 +3,7 @@ import itertools as itr
 # === IMPORTS: THIRD-PARTY ===
 import numpy as np
 import networkx as nx
+import cvxpy as cp
 
 # === IMPORTS: LOCAL ===
 from pyscipopt import Model, quicksum, multidict
@@ -189,3 +190,41 @@ class IntegerProgram:
         elif self.solver == "gurobi":
             return self.solve_gurobi()
 
+    def create_model_cvxopt(self):
+        raise NotImplementedError
+        
+        p = min(self.env2dim.values())
+        indicators = dict()
+
+        # === CREATE THE VARIABLES
+        for k in range(p):
+            for e, dim in self.env2dim.items():
+                indicators[(k, e)] = cp.Variable(dim, boolean=True)
+        
+        # === CREATE THE CONSTRAINTS
+        constraints = []
+        # each node belongs to at most one cluster
+        for e, dim in self.env2dim.items():
+            for j_e in range(dim):
+                inds = [indicators[(k, e)][j_e] for k in range(p)]
+                constraints.append(sum(inds) <= 1)
+
+        # each cluster has one node from each environment
+        for k in range(p):
+            for e, dim in self.env2dim.items():
+                inds = [indicators[(k, e)][j_e] for j_e in range(dim)]
+                constraints.append(sum(inds) == 1)
+
+        # === CREATE THE OBJECTIVE
+        weight = 0
+        for k in range(p):
+            for e, f in itr.combinations(self.env2dim, 2):
+                for j_e in range(self.env2dim[e]):
+                    for j_f in range(self.env2dim[f]):
+                        ind_e = indicators[(k, e)][j_e]
+                        ind_f = indicators[(k, f)][j_f]
+                        weight += ind_e * ind_f * self.weights[(e, j_e), (f, j_f)]
+
+        objective = cp.Minimize(weight)
+        prob = cp.Problem(objective, constraints)
+        prob.solve(verbose=True, solver="SCIP")
