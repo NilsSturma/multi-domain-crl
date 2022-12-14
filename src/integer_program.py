@@ -171,6 +171,21 @@ class IntegerProgram:
         
         return [{elm for elm in c if isinstance(elm, tuple)} for c in estimated_clusters]
 
+    def cvxopt_solution2clusters(self, indicators):
+        p = min(self.env2dim.values())
+        g = nx.Graph()
+
+        for k in range(p):
+            for e, dim in self.env2dim.items():
+                for j_e in range(dim):
+                    indicator = indicators[(k, e)]
+                    if np.isclose(indicator.value[j_e], 1):
+                        g.add_edge((e, j_e), k)
+
+        estimated_clusters = list(nx.connected_components(g))
+        
+        return [{elm for elm in c if isinstance(elm, tuple)} for c in estimated_clusters]
+
     def solve_scip(self):
         model, indicators = self.create_model_scip()
         model.optimize()
@@ -184,15 +199,21 @@ class IntegerProgram:
         estimated_clusters = self.gurobi_solution2clusters(indicators)
         return estimated_clusters
 
+    def solve_cvxopt(self):
+        prob, indicators = self.create_model_cvxopt()
+        prob.solve(verbose=True, solver="SCIP")
+        estimated_clusters = self.cvxopt_solution2clusters(indicators)
+        return estimated_clusters
+
     def solve(self):
         if self.solver == "scip":
             return self.solve_scip()
         elif self.solver == "gurobi":
             return self.solve_gurobi()
+        elif self.solver == "cvxopt":
+            return self.solve_cvxopt()
 
     def create_model_cvxopt(self):
-        raise NotImplementedError
-        
         p = min(self.env2dim.values())
         indicators = dict()
 
@@ -223,8 +244,13 @@ class IntegerProgram:
                     for j_f in range(self.env2dim[f]):
                         ind_e = indicators[(k, e)][j_e]
                         ind_f = indicators[(k, f)][j_f]
-                        weight += ind_e * ind_f * self.weights[(e, j_e), (f, j_f)]
+                        joint_ind = cp.Variable(1, boolean=True)
+                        constraints.append(ind_e + ind_f - joint_ind <= 1)
+                        constraints.append(ind_e - joint_ind >= 0)
+                        constraints.append(ind_f - joint_ind >= 0)
+                        weight += joint_ind * self.weights[(e, j_e), (f, j_f)]
 
         objective = cp.Minimize(weight)
         prob = cp.Problem(objective, constraints)
-        prob.solve(verbose=True, solver="SCIP")
+
+        return prob, indicators

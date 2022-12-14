@@ -1,6 +1,5 @@
 # === IMPORTS: BUILT-IN ===
 from time import time
-from functools import partial
 
 # === IMPORTS: THIRD-PARTY ===
 import numpy as np
@@ -85,6 +84,7 @@ names2algs = {
     "quadratic_symmetry": dict(linear_constraint=False, symmetry_breaking=True),
     "quadratic_gurobi": dict(linear_constraint=False, symmetry_breaking=True, solver="gurobi"),
     "linear_gurobi": dict(linear_constraint=True, symmetry_breaking=True, solver="gurobi"),
+    # "linear_cvxopt": dict(linear_constraint=True, symmetry_breaking=True, solver="cvxopt"),
 }
 matches, times = col.run(names2algs)
 plt.clf()
@@ -92,6 +92,7 @@ plt.plot(col.num_envs_list, times["linear_symmetry"].mean(axis=1), label="Linear
 plt.plot(col.num_envs_list, times["quadratic_symmetry"].mean(axis=1), label="Quadratic constraint (SCIP)")
 plt.plot(col.num_envs_list, times["quadratic_gurobi"].mean(axis=1), label="Quadratic (Gurobi)")
 plt.plot(col.num_envs_list, times["linear_gurobi"].mean(axis=1), label="Linear (Gurobi)")
+# plt.plot(col.num_envs_list, times["linear_cvxopt"].mean(axis=1), label="Linear (cvxopt)")
 plt.xlabel("Number of environments")
 plt.ylabel("Average solution time")
 plt.legend()
