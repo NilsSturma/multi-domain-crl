@@ -10,6 +10,7 @@ import cvxpy as cp
 from src.dist import third_moments_distance
 
 from pyscipopt import Model, quicksum, multidict
+import gurobipy as gp
 
 
 class PruningStrategy:
@@ -62,7 +63,12 @@ def create_model_cvxopt(env2dim: dict, weights):
     prob.solve(verbose=True, solver="SCIP")
 
 
-def create_model_scip(env2dim: dict, weights):
+def create_model_scip(
+    env2dim: dict, 
+    weights, 
+    linear_constraint=False,
+    symmetry_breaking=True
+):
     model = Model("minimum")
     p = min(env2dim.values())
 
@@ -96,14 +102,87 @@ def create_model_scip(env2dim: dict, weights):
                     ind_e = indicators[(k, e, j_e)]
                     ind_f = indicators[(k, f, j_f)]
                     joint_ind = model.addVar(vtype="B", name=f"A_{e}{j_e},{f}{j_f}^{k}")
-                    model.addCons(ind_e * ind_f == joint_ind)
+                    if linear_constraint:
+                        model.addCons(ind_e + ind_f - joint_ind <= 1)
+                        model.addCons(ind_e - joint_ind >= 0)
+                        model.addCons(ind_f - joint_ind >= 0)
+                    else:
+                        model.addCons(ind_e * ind_f == joint_ind)
                     weight = weights[(e, j_e), (f, j_f)]
                     weight_total += weight
                     weight_terms.append(joint_ind * weight)
 
-    model.setObjective(quicksum(weight_terms), "maximize")
+    if symmetry_breaking:
+        env_fixed = next(e for e, dim in env2dim.items() if dim == p)
+        for k in range(p):
+            ind = indicators[(k, env_fixed, k)]
+            model.addCons(ind == 1)
+
+    model.setObjective(quicksum(weight_terms), "minimize")
 
     return model, indicators
+
+
+def create_model_gurobi(
+    env2dim: dict, 
+    weights, 
+    linear_constraint=False,
+    symmetry_breaking=True
+):
+    model = gp.Model("minimum")
+    p = min(env2dim.values())
+
+    # === CREATE THE DECISION VARIABLES
+    indicators = dict()
+    for k in range(p):
+        for e, dim in env2dim.items():
+            for j_e in range(dim):
+                indicators[(k, e, j_e)] = model.addVar(vtype="B", name=f"A_{e}{j_e}^{k}")
+    
+    # === CREATE THE CONSTRAINTS
+    # each node belongs to at most one cluster
+    for e, dim in env2dim.items():
+        for j_e in range(dim):
+            inds = [indicators[(k, e, j_e)] for k in range(p)]
+            model.addConstr(sum(inds) <= 1, f"Node_{e}{j_e}")
+
+    # each cluster has one node from each environment
+    for k in range(p):
+        for e, dim in env2dim.items():
+            inds = [indicators[(k, e, j_e)] for j_e in range(dim)]
+            model.addConstr(sum(inds) == 1, f"Cluster_{e}{k}")
+
+    # === CREATE THE OBJECTIVE
+    weight_terms = []
+    weight_total = 0
+    for k in range(p):
+        for e, f in itr.combinations(env2dim, 2):
+            for j_e in range(env2dim[e]):
+                for j_f in range(env2dim[f]):
+                    ind_e = indicators[(k, e, j_e)]
+                    ind_f = indicators[(k, f, j_f)]
+                    joint_ind = model.addVar(vtype="B", name=f"A_{e}{j_e},{f}{j_f}^{k}")
+                    if linear_constraint:
+                        model.addConstr(ind_e + ind_f - joint_ind <= 1)
+                        model.addConstr(ind_e - joint_ind >= 0)
+                        model.addConstr(ind_f - joint_ind >= 0)
+                    else:
+                        model.addConstr(ind_e * ind_f == joint_ind)
+                    weight = weights[(e, j_e), (f, j_f)]
+                    weight_total += weight
+                    weight_terms.append(joint_ind * weight)
+
+    if symmetry_breaking:
+        env_fixed = next(e for e, dim in env2dim.items() if dim == p)
+        for k in range(p):
+            ind = indicators[(k, env_fixed, k)]
+            model.addConstr(ind == 1)
+
+    model.setObjective(sum(weight_terms), gp.GRB.MINIMIZE)
+
+    return model, indicators
+
+
 
 
 if __name__ == "__main__":
