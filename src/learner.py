@@ -10,9 +10,10 @@ from src.scoring import score_up_to_signed_perm, get_permutation_matrix, permuta
 
 class LinearMDCRL:
 
-    def __init__(self, measure="ks-test"):
+    def __init__(self, measure="ks-test", alpha=0.05):
 
         self.measure = measure
+        self.alpha = alpha
 
     def fit(self, data):
          # Each element in data is a matrix of shape n_e x d_e
@@ -41,11 +42,19 @@ class LinearMDCRL:
 
 
     def match(self):
+
+        #Adjust alpha
+        total_ntests = 0
+        for i in range(self.nr_env):
+            for j in range(i+1, self.nr_env):
+                total_ntests = total_ntests + self.indep_comps[i].shape[1] * self.indep_comps[j].shape[1]
+        self.adj_alpha = self.alpha / total_ntests
+        
         matchings = {}
         for i in range(self.nr_env):
             for j in range(i+1, self.nr_env):
                 S = self.signed_similarity_matrix(self.indep_comps[i],self.indep_comps[j])
-                matchings[str(i)+str(j)] = self.maximum_matching(S)
+                matchings[str(i)+str(j)] = self.maximum_matching(S, alpha=self.adj_alpha)
         
         # Define potential factors
         pot_factors = [[i] for i in list(matchings['01'].keys())] 
@@ -183,13 +192,13 @@ class LinearMDCRL:
         return S
 
     @staticmethod
-    def maximum_matching(similarity_matrix, level=0.05):
+    def maximum_matching(similarity_matrix, alpha):
         p = similarity_matrix.shape[0]
         matching = {}
         for i in range(p):
             row_argmax = similarity_matrix[i,:].argmax()
             row_max = similarity_matrix[i,:].max()
-            if (similarity_matrix[:,row_argmax].argmax() == i) and (row_max >= level):
+            if (similarity_matrix[:,row_argmax].argmax() == i) and (row_max >= alpha):
                 matching[i] = row_argmax
         return matching
 
@@ -255,7 +264,7 @@ class LinearMDCRL:
                         return cand_ids[j]
 
     @staticmethod
-    def get_low_rank(cand_ids, ord_tup, R, level=0.95):
+    def get_low_rank(cand_ids, ord_tup, R, level):
         l = len(cand_ids)
         ids0 = ord_tup[0][cand_ids]
         ids1 = ord_tup[1][cand_ids]
