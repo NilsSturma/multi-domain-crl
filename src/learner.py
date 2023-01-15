@@ -1,6 +1,6 @@
 # === IMPORTS: THIRD-PARTY ===
 import numpy as np
-from itertools import combinations
+from itertools import combinations, product
 from sklearn.decomposition import FastICA
 from scipy.stats import wasserstein_distance, ks_2samp
 
@@ -10,10 +10,11 @@ from src.scoring import score_up_to_signed_perm, get_permutation_matrix, permuta
 
 class LinearMDCRL:
 
-    def __init__(self, measure="ks-test", alpha=0.05):
+    def __init__(self, measure="ks-test", alpha=0.05, gamma=0.1):
 
         self.measure = measure
         self.alpha = alpha
+        self.gamma = gamma
 
     def fit(self, data):
          # Each element in data is a matrix of shape n_e x d_e
@@ -47,9 +48,10 @@ class LinearMDCRL:
         total_ntests = 0
         for i in range(self.nr_env):
             for j in range(i+1, self.nr_env):
-                total_ntests = total_ntests + self.indep_comps[i].shape[1] * self.indep_comps[j].shape[1]
+                total_ntests = total_ntests + 2 * self.indep_comps[i].shape[1] * self.indep_comps[j].shape[1]
         self.adj_alpha = self.alpha / total_ntests
         
+        # Pairwise matching
         matchings = {}
         for i in range(self.nr_env):
             for j in range(i+1, self.nr_env):
@@ -107,7 +109,10 @@ class LinearMDCRL:
     def get_joint_graph(self):
 
         B = self.joint_mixing[:,:self.nr_joint]
-        
+
+        # Remove zero rows
+        B = self.remove_zero_rows(B)
+
         # Find one pure child per latent node
         B_star = self.get_pure_children(B)
 
@@ -129,7 +134,24 @@ class LinearMDCRL:
             B_star = B_star + np.diag(np.full(self.nr_joint, 1e-20))
         self.A = (np.eye(B_star.shape[0]) - np.linalg.inv(B_star))
 
+    # function as in paper
+    def score_shared_columns(self, B_true, true_nr_joint):
+        min_error = float('inf')
+        if self.nr_joint == true_nr_joint:
+            min_error = score_up_to_signed_perm(self.joint_mixing[:,:self.nr_joint], B_true[:,:self.nr_joint])[0]
+        elif self.nr_joint < true_nr_joint:
+            for comb in combinations(range(true_nr_joint), self.nr_joint):
+                res = score_up_to_signed_perm(self.joint_mixing[:,:self.nr_joint], B_true[:,comb])
+                if res[0] < min_error:
+                    min_error = res[0]
+        else:
+            for comb in combinations(range(self.nr_joint), true_nr_joint):
+                res = score_up_to_signed_perm(self.joint_mixing[:,comb], B_true[:,:true_nr_joint])
+                if res[0] < min_error:
+                    min_error = res[0]
+        return min_error
 
+    # also score domain-specific columns but requires \hat(l)=l
     def score_joint_mixing_complete(self, B_true):
         B_perm = self.joint_mixing.copy()
         # Score joint mixing
@@ -146,7 +168,7 @@ class LinearMDCRL:
         final_score = np.linalg.norm(B_perm - B_true)
         return (final_score, B_perm)
 
-
+    # to be deleted
     def score_only_joint_columns(self, B_true, true_nr_joint):
         min_error = float('inf')
         for comb in combinations(range(true_nr_joint), self.nr_joint):
@@ -155,15 +177,28 @@ class LinearMDCRL:
                 min_error = res[0]
         return min_error
 
+    # this function only works if \hat(l)=l
     def score_graph_param_matrix(self, A_true):
         min_error = float('inf')
+        dim = A_true.shape[0]
         for perm in permutations_respecting_graph(A_true):
             P = get_permutation_matrix(perm)
-            A_hat_perm = P @ self.A @ P.T
-            error = np.linalg.norm(A_hat_perm - A_true)
+            A_hat_perm = P.T @ self.A @ P
+            abs_error = np.linalg.norm(abs(A_hat_perm) - abs(A_true))
+            if abs_error < min_error:
+                min_error = abs_error
+                best_A_hat_perm = A_hat_perm
+        min_error = float('inf')
+        for binary_seq in product([0,1], repeat=dim):
+            binary_seq = np.array(binary_seq).astype(bool)
+            D = np.ones(dim)
+            D[binary_seq] = -1
+            D = np.diag(D)
+            A_hat_scaled = D @ best_A_hat_perm @ D
+            error = np.linalg.norm(A_hat_scaled - A_true)
             if error < min_error:
                 min_error = error
-                best_solution = (min_error, A_hat_perm)
+                best_solution = (min_error, A_hat_scaled)
         return best_solution
 
     #########################################
@@ -263,15 +298,14 @@ class LinearMDCRL:
                     if (ids0[i]==ids0[j]) or (ids0[i]==ids1[j]):
                         return cand_ids[j]
 
-    @staticmethod
-    def get_low_rank(cand_ids, ord_tup, R, level):
+    def get_low_rank(self, cand_ids, ord_tup, R):
         l = len(cand_ids)
         ids0 = ord_tup[0][cand_ids]
         ids1 = ord_tup[1][cand_ids]
         #print(ids0,  ids1)
         for i in range(l):
             for j in range(i+1,l):
-                if (R[ids0[i],ids0[j]] > level) or (R[ids0[i],ids1[j]] > level):
+                if (R[ids0[i],ids0[j]] > (1/self.gamma)) or (R[ids0[i],ids1[j]] > (1/self.gamma)):
                     #print(i,j,R[ids0[i],ids0[j]],R[ids0[i],ids1[j]])
                     return cand_ids[i], cand_ids[j]
         return None 
@@ -306,11 +340,11 @@ class LinearMDCRL:
             if to_remove is not None:
                 cand_ids = self.update_cand_ids(cand_ids, to_remove)
                 continue
-            to_remove = self.get_low_rank(cand_ids, ord_tup, R, level=10)
+            to_remove = self.get_low_rank(cand_ids, ord_tup, R)
             if to_remove is not None:
                 temp_cands = cand_ids.copy()
                 temp_cands = self.update_cand_ids(temp_cands, to_remove[0])
-                if self.get_low_rank(temp_cands, ord_tup, R, level=10) is None:
+                if self.get_low_rank(temp_cands, ord_tup, R) is None:
                     cand_ids = self.update_cand_ids(cand_ids, to_remove[0])
                 else:
                     cand_ids = self.update_cand_ids(cand_ids, to_remove[1])
@@ -350,3 +384,13 @@ class LinearMDCRL:
         if len(order_rows) != d:
                 return None, None
         return order_rows, order_cols
+
+    @staticmethod
+    def remove_zero_rows(M):
+        nrow = M.shape[0]
+        to_delete = []
+        for i in range(nrow):
+            if np.linalg.norm(M[i,:]) < 0.1:
+                to_delete.append(i)
+        M = np.delete(M, to_delete, axis=0)
+        return M

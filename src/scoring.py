@@ -22,7 +22,7 @@ def get_permutation_matrix(perm: list):
     nodes = list(range(len(perm)))
     mat = np.zeros((len(perm), len(perm)), dtype=int)
     mat[nodes, perm] = 1
-    return mat.T  # Attention: transposed mat
+    return mat
 
 def permutations_respecting_graph(A):
     l = A.shape[0]

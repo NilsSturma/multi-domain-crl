@@ -69,7 +69,7 @@ def rand_G(shape, pure_children=0, nr_joints=0, density=0.75, distribution='norm
         nr_joints = 0
     mask = binomial(density, size=(rem_rows,shape[1])).astype(bool)
     G[(pure_children*nr_joints):, :][mask] = rand_generator(size=mask.sum(), distribution=distribution)
-    G = pos_pure_children(G, nr_joints=nr_joints)
+    #G = pos_pure_children(G, nr_joints=nr_joints)
     np.random.shuffle(G)
     return G
 
