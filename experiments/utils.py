@@ -67,7 +67,8 @@ def get_statistics(info):
         avg_number_shared[s_ix] = number_shared.mean()
     return (avg_number_shared, too_many_shared_rate, mixing_error_median, graph_error_median)
 
-def plot(nsamples_list, stats2, stats3, stats4, ylabel="Score", path="test.png", fontsize=13, ylim=None):
+def plot(nsamples_list, stats2, stats3, stats4, ylabel="Score", path="test.png", 
+            fontsize=13, ylim=None, legendfontsize=13):
     sns.set()
     plt.figure(figsize=(3.3,2.7))
     plt.clf()
@@ -79,7 +80,7 @@ def plot(nsamples_list, stats2, stats3, stats4, ylabel="Score", path="test.png",
     plt.xscale("log")
     plt.xlabel("Sample size", fontsize=fontsize)
     plt.ylabel(ylabel, fontsize=fontsize)
-    plt.legend(fontsize=fontsize)
+    plt.legend(fontsize=legendfontsize)
     plt.xticks(fontsize=fontsize)
     plt.yticks(fontsize=fontsize)
     plt.tight_layout()

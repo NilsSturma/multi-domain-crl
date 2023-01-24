@@ -32,7 +32,7 @@ plot(nsamples_list, avg_number_shared2, avg_number_shared3, avg_number_shared4,
 
 plot(nsamples_list, too_many_shared_rate2, too_many_shared_rate3, too_many_shared_rate4,
                 ylabel="Fraction with $\hat{\ell} > \ell$",
-                path=f"results-paper/too-many-shared-nodes_l={l}_d={d}.png")
+                path=f"results-paper/too-many-shared-nodes_l={l}_d={d}.png", legendfontsize=9)
 
 plot(nsamples_list, mixing_error_rate2, mixing_error_rate3, mixing_error_rate4,
                 ylabel="score$_B$",
