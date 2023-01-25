@@ -1,12 +1,15 @@
-# ===== IMPORTS =====
+# === IMPORTS: BUILT-IN ===
 import pickle
+
+# === IMPORTS: THIRD-PARTY ===
 from scipy.stats import beta, expon, lognorm, weibull_min, chi2, gumbel_r, skewnorm
 
-# ===== IMPORTS: LOCAL =====
-from experiments import run_experiments
+# === IMPORTS: LOCAL ===
+from experiments.experiments import run_experiments
 
 
-# ===== DEFINE info-dict =====
+
+# Define info-dict
 rvs = [beta(2,3), beta(2,5), chi2(df=4), gumbel_r, lognorm(s=1),
     weibull_min(c=2), expon(scale=0.1), skewnorm(a=6), skewnorm(a=12)]
 
@@ -36,10 +39,10 @@ info = {"results": dict(),
             )
         }
 
-# ===== RUN EXPERIMENTS =====
+# Run experiments
 info = run_experiments(info)
 
-# ===== SAVE =====
-filename = f"results-paper/nr_doms={model_specs['nr_doms']}_l={len(model_specs['joint_idx'])}_d={sum(model_specs['dims'])}.pkl"
+# Save
+filename = f"experiments/experiment_l=5/results/ndom={model_specs['nr_doms']}.pkl"
 with open(filename, "wb") as f:
     pickle.dump(info, f)

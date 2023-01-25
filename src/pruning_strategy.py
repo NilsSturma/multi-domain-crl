@@ -4,7 +4,6 @@ from scipy.stats import wasserstein_distance
 
 # === IMPORTS: LOCAL ===
 from src.dist import third_moments_distance
-from src.integer_program import IntegerProgram
 
 
 

@@ -1,19 +1,19 @@
+# === IMPORTS: THIRD-PARTY ===
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
+
+
 
 def sample_normed(n, rv):
     return (rv.rvs(size=n) - rv.mean()) / rv.std()
 
 def plot_error_distr(rvs, n=10000, save=False, figsize=(18,5), shape=(2,5)):
-    
     samples = np.zeros((n,len(rvs)))
     for i, rv in enumerate(rvs):
         samples[:,i] = sample_normed(n,rv)
-
     fig, ax = plt.subplots(shape[0], shape[1], figsize=figsize)
     fig.delaxes(ax[1,4])
-
     counter = 0
     for i in range(2):
         for j in range(5):
@@ -42,7 +42,6 @@ def get_statistics(info):
     nexp = metadata["nexp"]
     nsamples_list = metadata["nsamples_list"]
     m = metadata["model_specs"]
-
     mixing_error_median = np.zeros(len(nsamples_list))
     graph_error_median = np.zeros(len(nsamples_list))
     too_many_shared_rate = np.zeros(len(nsamples_list))
@@ -55,12 +54,12 @@ def get_statistics(info):
         for exp_ix in range(nexp):
             number_shared[exp_ix] = info["results"][(s_ix, exp_ix)]["nr_joint"]
             mixing_errors[exp_ix] = info["results"][(s_ix, exp_ix)]["mixing_error"] / \
-                (min(number_shared[exp_ix], len(m["joint_idx"])) * sum(m["dims"])) ### normalizing!!
+                (min(number_shared[exp_ix], len(m["joint_idx"])) * sum(m["dims"])) 
             if number_shared[exp_ix] > len(m["joint_idx"]):
                 too_many_shared[exp_ix] = True
             if number_shared[exp_ix] == len(m["joint_idx"]):
                 graph_errors[exp_ix] = info["results"][(s_ix, exp_ix)]["graph_error"] / \
-                    (len(m["joint_idx"])) ### normalizing!!
+                    len(m["joint_idx"])
         too_many_shared_rate[s_ix] = too_many_shared.mean()
         mixing_error_median[s_ix] = np.nanmedian(mixing_errors)
         graph_error_median[s_ix] = np.nanmedian(graph_errors)
@@ -86,4 +85,4 @@ def plot(nsamples_list, stats2, stats3, stats4, ylabel="Score", path="test.png",
     plt.yticks(fontsize=fontsize)
     plt.tight_layout()
     plt.savefig(path)
-    plt.show()
+    #plt.show()

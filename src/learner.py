@@ -34,7 +34,7 @@ class LinearMDCRL:
         for X in self.data:
             cov = np.cov(np.transpose(X))
             rk = np.linalg.matrix_rank(cov)
-            ICA = FastICA(n_components=rk, whiten='unit-variance', max_iter=10000) 
+            ICA = FastICA(n_components=rk, whiten='unit-variance', max_iter=10000, tol=1e-3) 
             ICA.fit(X)
             eps = ICA.transform(X)
             scaling = eps.std(axis=0)
@@ -72,7 +72,6 @@ class LinearMDCRL:
         # Only keep consistent factors
         self.joint_factors = [f for f in pot_factors if self.is_consistent(f, matchings)]
         self.joint_signs = [self.add_signs_to_factor(f) for f in self.joint_factors]
-
 
     def get_joint_mixing(self):
         self.nr_joint = len(self.joint_factors)

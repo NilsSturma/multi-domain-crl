@@ -1,22 +1,26 @@
-# ===== IMPORTS =====
-import numpy as np
+# === IMPORTS: BUILT-IN ===
 from time import time
 
-# ===== IMPORTS: LOCAL =====
-import sys
-sys.path.append('..')
+# === IMPORTS: THIRD-PARTY ===
+import numpy as np
 
+# === IMPORTS: LOCAL ===
 from src.learner import LinearMDCRL
-from rand import rand_model
+from experiments.rand import rand_model
 
 
 
 def run_experiments(info):
+
     metadata = info["metadata"]
     nexp = metadata["nexp"]
     nsamples_list = metadata["nsamples_list"]
+
     for s_ix, n in enumerate(nsamples_list):
+        
+        # Info on progress
         print(n)
+
         for exp_ix in range(nexp):
             
             # Info on progress
@@ -42,7 +46,6 @@ def run_experiments(info):
                 graph_error, A_hat = model.score_graph_param_matrix(A_true)
             else:
                 graph_error = None
-
 
             # Save results
             info["results"][(s_ix, exp_ix)] = dict(
