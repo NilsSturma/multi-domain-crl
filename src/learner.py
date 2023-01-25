@@ -1,6 +1,8 @@
+# === IMPORTS: BUILT-IN ===
+from itertools import combinations, product
+
 # === IMPORTS: THIRD-PARTY ===
 import numpy as np
-from itertools import combinations, product
 from sklearn.decomposition import FastICA
 from scipy.stats import wasserstein_distance, ks_2samp
 
@@ -8,10 +10,10 @@ from scipy.stats import wasserstein_distance, ks_2samp
 from src.scoring import score_up_to_signed_perm, get_permutation_matrix, permutations_respecting_graph
 
 
+
 class LinearMDCRL:
 
     def __init__(self, measure="ks-test", alpha=0.05, gamma=0.1):
-
         self.measure = measure
         self.alpha = alpha
         self.gamma = gamma
@@ -41,10 +43,9 @@ class LinearMDCRL:
             self.indep_comps.append(eps)
             self.mixings.append(mixing)
 
-
     def match(self):
-
-        #Adjust alpha
+        
+        # Adjust alpha
         total_ntests = 0
         for i in range(self.nr_env):
             for j in range(i+1, self.nr_env):
@@ -105,7 +106,6 @@ class LinearMDCRL:
             current_row = current_row + nrows
         self.joint_mixing = M_large
 
-
     def get_joint_graph(self):
 
         B = self.joint_mixing[:,:self.nr_joint]
@@ -151,12 +151,14 @@ class LinearMDCRL:
                     min_error = res[0]
         return min_error
 
-    # also score domain-specific columns but requires \hat(l)=l
+    # Also scores domain-specific columns but requires \hat(l)=l.
     def score_joint_mixing_complete(self, B_true):
         B_perm = self.joint_mixing.copy()
+
         # Score joint mixing
         res = score_up_to_signed_perm(self.joint_mixing[:,:self.nr_joint], B_true[:,:self.nr_joint])
         B_perm[:,:self.nr_joint] = res[1]
+
         # Score domain-specific ones
         current_col = self.nr_joint
         for i in range(self.nr_env):
@@ -166,18 +168,10 @@ class LinearMDCRL:
             B_perm[:,current_col:(current_col+nlatents)] = res[1]
             current_col = current_col+nlatents
         final_score = np.linalg.norm(B_perm - B_true)
+
         return (final_score, B_perm)
 
-    # to be deleted
-    def score_only_joint_columns(self, B_true, true_nr_joint):
-        min_error = float('inf')
-        for comb in combinations(range(true_nr_joint), self.nr_joint):
-            res = score_up_to_signed_perm(self.joint_mixing[:,], B_true[:,comb])
-            if res[0] < min_error:
-                min_error = res[0]
-        return min_error
-
-    # this function only works if \hat(l)=l
+    # WARNING: this function only works if \hat(l)=l
     def score_graph_param_matrix(self, A_true):
         min_error = float('inf')
         dim = A_true.shape[0]
@@ -261,7 +255,6 @@ class LinearMDCRL:
                     return False
         return True
 
-
     @staticmethod
     def rescale_columns(eps):
         for i in range(eps.shape[1]):
@@ -302,11 +295,9 @@ class LinearMDCRL:
         l = len(cand_ids)
         ids0 = ord_tup[0][cand_ids]
         ids1 = ord_tup[1][cand_ids]
-        #print(ids0,  ids1)
         for i in range(l):
             for j in range(i+1,l):
                 if (R[ids0[i],ids0[j]] > (1/self.gamma)) or (R[ids0[i],ids1[j]] > (1/self.gamma)):
-                    #print(i,j,R[ids0[i],ids0[j]],R[ids0[i],ids1[j]])
                     return cand_ids[i], cand_ids[j]
         return None 
 
@@ -318,7 +309,7 @@ class LinearMDCRL:
         return(cand_ids)
 
     def get_pure_children(self, B):
-    
+
         # Score all pairs of rows
         R = self.score_rows(B)
         d = R.shape[0]

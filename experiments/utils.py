@@ -76,7 +76,8 @@ def plot(nsamples_list, stats2, stats3, stats4, ylabel="Score", path="test.png",
         plt.ylim(ylim)
     plt.plot(nsamples_list, stats2, "-", color="blue", label="2 domains")
     plt.plot(nsamples_list, stats3, "--", color="red", label="3 domains")
-    plt.plot(nsamples_list, stats4, "-.", color="green", label="4 domains")
+    if stats4 is not None:
+        plt.plot(nsamples_list, stats4, "-.", color="green", label="4 domains")
     plt.xscale("log")
     plt.xlabel("Sample size", fontsize=fontsize)
     plt.ylabel(ylabel, fontsize=fontsize)

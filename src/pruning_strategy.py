@@ -1,10 +1,6 @@
-import itertools as itr
 
 # === IMPORTS: THIRD-PARTY ===
-import numpy as np
-from sklearn.decomposition import FastICA
 from scipy.stats import wasserstein_distance
-
 
 # === IMPORTS: LOCAL ===
 from src.dist import third_moments_distance
@@ -23,4 +19,3 @@ class PruningStrategy:
 
     def match(self, distances):
         pass
-

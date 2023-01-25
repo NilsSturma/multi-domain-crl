@@ -1,5 +1,10 @@
-import numpy as np
+# === IMPORTS: BUILT-IN ===
 from itertools import permutations
+
+# === IMPORTS: THIRD-PARTY ===
+import numpy as np
+
+
 
 def score_up_to_signed_perm(mat_hat, mat):
     ncols = mat.shape[1]
@@ -14,7 +19,7 @@ def score_up_to_signed_perm(mat_hat, mat):
         if np.linalg.norm(-mat_hat[:,i] - mat[:,i]) < np.linalg.norm(mat_hat[:,i] - mat[:,i]):
             mat_hat[:,i] = -mat_hat[:,i]
     return (np.linalg.norm(mat_hat - mat), mat_hat)
-# This is a two-step approach: 
+# Note: This is a two-step approach.
 # First look for best permutation in terms of comparing absoulte values,
 # then check if the column itself or multiplies with -1 is favorable
 

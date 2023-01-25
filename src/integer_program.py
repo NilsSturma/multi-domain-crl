@@ -1,3 +1,4 @@
+# === IMPORTS: BUILT-IN ===
 import itertools as itr
 
 # === IMPORTS: THIRD-PARTY ===
@@ -6,7 +7,7 @@ import networkx as nx
 import cvxpy as cp
 
 # === IMPORTS: LOCAL ===
-from pyscipopt import Model, quicksum, multidict
+from pyscipopt import Model, quicksum
 import gurobipy as gp
 
 
