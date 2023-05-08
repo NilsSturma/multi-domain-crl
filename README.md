@@ -11,4 +11,5 @@ To reproduce the experimental results in the paper, run:
 ```
 bash experiments/experiment_l=3/run.sh
 bash experiments/experiment_l=5/run.sh
+bash experiments/experiment_assump_violated/run.sh
 ```
