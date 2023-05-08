@@ -26,7 +26,7 @@ labels=["Assump. satisfied", "Same errors", "No pure children"]
 plot(nsamples_list, avg_number_shared1, avg_number_shared2, avg_number_shared3,
                 ylabel="Average of $\hat{\ell}$",
                 path="experiments/experiment_assump_violated/results/avg-shared-nodes.png", 
-                ylim=(-0.1,5.1), labels=labels, legendfontsize=9)
+                ylim=(-0.1,3.1), labels=labels, legendfontsize=9)
 
 plot(nsamples_list, too_many_shared_rate1, too_many_shared_rate2, too_many_shared_rate3,
                 ylabel="Fraction with $\hat{\ell} > \ell$",
