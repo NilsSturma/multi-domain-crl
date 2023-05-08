@@ -34,11 +34,11 @@ plot(nsamples_list, too_many_shared_rate1, too_many_shared_rate2, too_many_share
                 labels=labels, legendfontsize=9)
 
 plot(nsamples_list, mixing_error_rate1, mixing_error_rate2, mixing_error_rate3,
-                ylabel="score$_B$",
+                ylabel="Median score$_B$",
                 path="experiments/experiment_assump_violated/results/mixing-error.png", 
                 labels=labels, legendfontsize=9)
 
 plot(nsamples_list, graph_error_median1, graph_error_median2, graph_error_median3,
-                ylabel="score$_A$",
+                ylabel="Median score$_A$",
                 path="experiments/experiment_assump_violated/results/graph-error.png", 
                 labels=labels, legendfontsize=9)

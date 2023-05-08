@@ -30,9 +30,9 @@ plot(nsamples_list, too_many_shared_rate2, too_many_shared_rate3, too_many_share
                 path="experiments/experiment_l=5/results/too-many-shared-nodes.png", legendfontsize=9)
 
 plot(nsamples_list, mixing_error_rate2, mixing_error_rate3, mixing_error_rate4,
-                ylabel="score$_B$",
+                ylabel="Median score$_B$",
                 path="experiments/experiment_l=5/results/mixing-error.png")
 
 plot(nsamples_list, graph_error_median2, graph_error_median3, graph_error_median4,
-                ylabel="score$_A$",
+                ylabel="Median score$_A$",
                 path="experiments/experiment_l=5/results/graph-error.png")
