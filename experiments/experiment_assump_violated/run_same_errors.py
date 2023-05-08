@@ -11,7 +11,7 @@ from experiments.experiments import run_experiments
 
 # Define info-dict
 rvs = [beta(2,3), beta(2,5), chi2(df=4), beta(2,3), lognorm(s=1),
-   beta(2,5), expon(scale=0.1), chi2(df=4), skewnorm(a=12)]
+   beta(2,5), lognorm(s=1), chi2(df=4), lognorm(s=1)]
 
 nsamples_list = [1000,2500,5000,10000,25000]
 nexp = 1000
