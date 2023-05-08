@@ -67,16 +67,16 @@ def get_statistics(info):
     return (avg_number_shared, too_many_shared_rate, mixing_error_median, graph_error_median)
 
 def plot(nsamples_list, stats2, stats3, stats4, ylabel="Score", path="test.png", 
-            fontsize=13, ylim=None, legendfontsize=13):
+            fontsize=13, ylim=None, legendfontsize=13, labels=["2 domains", "3 domains", "4 domains"]):
     sns.set()
     plt.figure(figsize=(3.3,2.7))
     plt.clf()
     if ylim is not None:
         plt.ylim(ylim)
-    plt.plot(nsamples_list, stats2, "-", color="blue", label="2 domains")
-    plt.plot(nsamples_list, stats3, "--", color="red", label="3 domains")
+    plt.plot(nsamples_list, stats2, "-", color="blue", label=labels[0])
+    plt.plot(nsamples_list, stats3, "--", color="red", label=labels[1])
     if stats4 is not None:
-        plt.plot(nsamples_list, stats4, "-.", color="green", label="4 domains")
+        plt.plot(nsamples_list, stats4, "-.", color="green", label=labels[2])
     plt.xscale("log")
     plt.xlabel("Sample size", fontsize=fontsize)
     plt.ylabel(ylabel, fontsize=fontsize)
