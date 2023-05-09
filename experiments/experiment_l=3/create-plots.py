@@ -6,7 +6,7 @@ from experiments.utils import get_statistics, plot
 
 
 
-gamma=0.1
+gamma=0.2
 
 # Load
 with open(f"experiments/experiment_l=3/results_gamma={gamma}/ndom=2.pkl", "rb") as f:
