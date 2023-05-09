@@ -375,12 +375,11 @@ class LinearMDCRL:
                 return None, None
         return order_rows, order_cols
 
-    @staticmethod
-    def remove_zero_rows(M):
+    def remove_zero_rows(self, M):
         nrow = M.shape[0]
         to_delete = []
         for i in range(nrow):
-            if np.linalg.norm(M[i,:]) < 0.1:
+            if np.linalg.norm(M[i,:]) < self.gamma:
                 to_delete.append(i)
         M = np.delete(M, to_delete, axis=0)
         return M

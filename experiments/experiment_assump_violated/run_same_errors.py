@@ -16,6 +16,8 @@ rvs = [beta(2,3), beta(2,5), chi2(df=4), beta(2,3), lognorm(s=1),
 nsamples_list = [1000,2500,5000,10000,25000]
 nexp = 1000
 measure = "ks-test"
+alpha=0.05
+gamma=0.1
 
 model_specs = {
     "nr_doms": 3,
@@ -35,7 +37,9 @@ info = {"results": dict(),
             nsamples_list=nsamples_list,
             nexp=nexp,
             measure=measure,
-            model_specs=model_specs
+            model_specs=model_specs,
+            alpha=alpha,
+            gamma=gamma
             )
         }
 

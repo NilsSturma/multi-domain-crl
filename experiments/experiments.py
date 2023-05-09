@@ -34,7 +34,9 @@ def run_experiments(info):
             A_true = np.transpose(g.to_amat())
 
             # Fit model
-            model = LinearMDCRL(measure=info["metadata"]["measure"], gamma=0.1)
+            model = LinearMDCRL(measure=metadata["measure"], 
+                                alpha=metadata["alpha"], 
+                                gamma=metadata["gamma"])
             start_time = time()
             model.fit(data)
             time_spent = time() - start_time

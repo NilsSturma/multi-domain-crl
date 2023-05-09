@@ -38,19 +38,33 @@ def plot_hist_noise(indep_comps, save=False, name="plot.png", figsize=(14,9)):
         plt.show()
 
 def get_statistics(info):
+
     metadata = info["metadata"]
     nexp = metadata["nexp"]
     nsamples_list = metadata["nsamples_list"]
     m = metadata["model_specs"]
+
     mixing_error_median = np.zeros(len(nsamples_list))
+    mixing_error_lower = np.zeros(len(nsamples_list))
+    mixing_error_upper = np.zeros(len(nsamples_list))
     graph_error_median = np.zeros(len(nsamples_list))
+    graph_error_lower = np.zeros(len(nsamples_list))
+    graph_error_upper = np.zeros(len(nsamples_list))
     too_many_shared_rate = np.zeros(len(nsamples_list))
+    too_many_shared_std = np.zeros(len(nsamples_list))
     avg_number_shared = np.zeros(len(nsamples_list))
+    std_number_shared = np.zeros(len(nsamples_list))
+    #lower_number_shared = np.zeros(len(nsamples_list))
+    #upper_number_shared = np.zeros(len(nsamples_list))
+    total_time = 0
+
     for s_ix, n in enumerate(nsamples_list):
+
         mixing_errors = np.full(nexp, np.nan)
         graph_errors = np.full(nexp, np.nan)
         too_many_shared = np.full(nexp, False)
         number_shared = np.full(nexp, 0)
+      
         for exp_ix in range(nexp):
             number_shared[exp_ix] = info["results"][(s_ix, exp_ix)]["nr_joint"]
             mixing_errors[exp_ix] = info["results"][(s_ix, exp_ix)]["mixing_error"] / \
@@ -60,23 +74,84 @@ def get_statistics(info):
             if number_shared[exp_ix] == len(m["joint_idx"]):
                 graph_errors[exp_ix] = info["results"][(s_ix, exp_ix)]["graph_error"] / \
                     len(m["joint_idx"])
+            total_time = total_time + info["results"][(s_ix, exp_ix)]["time_spent"]
+                
         too_many_shared_rate[s_ix] = too_many_shared.mean()
+        too_many_shared_std[s_ix] = too_many_shared.std()
         mixing_error_median[s_ix] = np.nanmedian(mixing_errors)
+        mixing_error_lower[s_ix] = np.nanquantile(mixing_errors, 0.25)
+        mixing_error_upper[s_ix] = np.nanquantile(mixing_errors, 0.75)
         graph_error_median[s_ix] = np.nanmedian(graph_errors)
-        avg_number_shared[s_ix] = number_shared.mean()
-    return (avg_number_shared, too_many_shared_rate, mixing_error_median, graph_error_median)
+        graph_error_lower[s_ix] = np.nanquantile(graph_errors, 0.25)
+        graph_error_upper[s_ix] = np.nanquantile(graph_errors, 0.75)
+        avg_number_shared[s_ix] = number_shared.mean()  # np.nanmedian(number_shared)
+        std_number_shared[s_ix] = number_shared.std()
+        #lower_number_shared[s_ix] = np.nanquantile(number_shared, 0.25)
+        #upper_number_shared[s_ix] = np.nanquantile(number_shared, 0.75)
+
+    result = {}
+    result["too_many_shared_rate"] = {"mean": too_many_shared_rate, 
+                                      "lower": too_many_shared_rate-too_many_shared_std,
+                                      "upper": too_many_shared_rate+too_many_shared_std}
+    result["number_shared"] = {"mean": avg_number_shared, 
+                               "lower": avg_number_shared-std_number_shared,
+                               "upper": avg_number_shared+std_number_shared}
+    result["mixing_error"] = {"mean": mixing_error_median, 
+                              "lower": mixing_error_lower,
+                              "upper": mixing_error_upper}
+    result["graph_error"] = {"mean": graph_error_median, 
+                             "lower": graph_error_lower,
+                             "upper": graph_error_upper}
+    result["total_time"] = total_time
+
+    return result
+
 
 def plot(nsamples_list, stats2, stats3, stats4, ylabel="Score", path="test.png", 
-            fontsize=13, ylim=None, legendfontsize=13, labels=["2 domains", "3 domains", "4 domains"]):
+            fontsize=13, ylim=None, legendfontsize=13, labels=["2 domains", "3 domains", "4 domains"], error_bars=False):
+    
     sns.set()
     plt.figure(figsize=(3.3,2.7))
     plt.clf()
     if ylim is not None:
         plt.ylim(ylim)
-    plt.plot(nsamples_list, stats2, "-", color="blue", label=labels[0])
-    plt.plot(nsamples_list, stats3, "--", color="red", label=labels[1])
+    yerr = None
+
+
+    # Stats2
+    if (stats2["lower"] is not None) and error_bars:
+        yerr_lower = stats2["mean"] - stats2["lower"]
+        yerr_upper = stats2["upper"] - stats2["mean"]
+        yerr = np.row_stack((yerr_lower, yerr_upper))
+    plt.errorbar(x=nsamples_list, y=stats2["mean"], yerr=yerr,
+                 linestyle="-", color="blue", label=labels[0], alpha=0.6, barsabove=True)
+    #plt.plot(nsamples_list, stats2["mean"], "-", color="blue", label=labels[0])
+    #if (stats2["lower"] is not None) and error_bars:
+    #    plt.fill_between(nsamples_list, stats2["lower"], stats2["upper"], alpha=0.5)
+
+    # Stats3
+    if (stats3["lower"] is not None) and error_bars:
+        yerr_lower = stats3["mean"] - stats3["lower"]
+        yerr_upper = stats3["upper"] - stats3["mean"]
+        yerr = np.row_stack((yerr_lower, yerr_upper))
+    plt.errorbar(x=nsamples_list, y=stats3["mean"], yerr=yerr,
+                 linestyle="--", color="red", label=labels[0], alpha=0.6)
+    #plt.plot(nsamples_list, stats3["mean"], "--", color="red", label=labels[1])
+    #if (stats3["lower"] is not None) and error_bars:
+    #    plt.fill_between(nsamples_list, stats3["lower"], stats3["upper"], alpha=0.5)
+
+    # Stats4
     if stats4 is not None:
-        plt.plot(nsamples_list, stats4, "-.", color="green", label=labels[2])
+        if (stats4["lower"] is not None) and error_bars:
+            yerr_lower = stats4["mean"] - stats4["lower"]
+            yerr_upper = stats4["upper"] - stats4["mean"]
+            yerr = np.row_stack((yerr_lower, yerr_upper))
+        plt.errorbar(x=nsamples_list, y=stats4["mean"], yerr=yerr,
+                 linestyle="-.", color="green", label=labels[0], alpha=0.6)
+        #plt.plot(nsamples_list, stats4["mean"], "-.", color="green", label=labels[2])
+        #if (stats4["lower"] is not None) and error_bars:
+        #    plt.fill_between(nsamples_list, stats4["lower"], stats4["upper"], alpha=0.5)
+
     plt.xscale("log")
     plt.xlabel("Sample size", fontsize=fontsize)
     plt.ylabel(ylabel, fontsize=fontsize)

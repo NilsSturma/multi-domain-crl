@@ -6,30 +6,44 @@ from experiments.utils import get_statistics, plot
 
 
 
+gamma=0.1
+
 # Load
-with open("experiments/experiment_l=3/results/ndom=2.pkl", "rb") as f:
+with open(f"experiments/experiment_l=3/results_gamma={gamma}/ndom=2.pkl", "rb") as f:
     info2 = pickle.load(f)
-with open(f"experiments/experiment_l=3/results/ndom=3.pkl", "rb") as f:
+
+with open(f"experiments/experiment_l=3/results_gamma={gamma}/ndom=3.pkl", "rb") as f:
     info3 = pickle.load(f)
+
 
 # Get statistics
 nsamples_list = info2["metadata"]["nsamples_list"]
-avg_number_shared2, too_many_shared_rate2, mixing_error_rate2, graph_error_median2 = get_statistics(info2)
-avg_number_shared3, too_many_shared_rate3, mixing_error_rate3, graph_error_median3 = get_statistics(info3)
+stats2 = get_statistics(info2)
+stats3 = get_statistics(info3)
 
 # Create plots
-plot(nsamples_list, avg_number_shared2, avg_number_shared3, None,
+plot(nsamples_list, stats2["number_shared"], stats3["number_shared"], None,
                 ylabel="Average of $\hat{\ell}$",
-                path="experiments/experiment_l=3/results/avg-shared-nodes.png", ylim=(-0.1,3.1))
+                path=f"experiments/experiment_l=3/results_gamma={gamma}/avg-shared-nodes.png", 
+                ylim=(-0.1,3.1), error_bars=True)
 
-plot(nsamples_list, too_many_shared_rate2, too_many_shared_rate3, None,
+plot(nsamples_list, stats2["too_many_shared_rate"], stats3["too_many_shared_rate"], None,
                 ylabel="Fraction with $\hat{\ell} > \ell$",
-                path="experiments/experiment_l=3/results/too-many-shared-nodes.png")
+                path=f"experiments/experiment_l=3/results_gamma={gamma}/too-many-shared-nodes.png", 
+                error_bars=False)
 
-plot(nsamples_list, mixing_error_rate2, mixing_error_rate3, None,
+plot(nsamples_list, stats2["mixing_error"], stats3["mixing_error"], None,
                 ylabel="Median score$_B$",
-                path="experiments/experiment_l=3/results/mixing-error.png")
+                path=f"experiments/experiment_l=3/results_gamma={gamma}/mixing-error.png", 
+                error_bars=True)
 
-plot(nsamples_list, graph_error_median2, graph_error_median3, None,
+plot(nsamples_list, stats2["graph_error"], stats3["graph_error"], None,
                 ylabel="Median score$_A$",
-                path="experiments/experiment_l=3/results/graph-error.png")
+                path=f"experiments/experiment_l=3/results_gamma={gamma}/graph-error.png", 
+                error_bars=True)
+
+# Total time in hours: 
+total_time = stats2["total_time"] + stats3["total_time"]
+
+with open(f"experiments/experiment_l=3/results_gamma={gamma}/time.txt", 'w') as f:
+    f.write(str(total_time))
