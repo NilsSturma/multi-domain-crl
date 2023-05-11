@@ -8,7 +8,7 @@ from experiments.utils import get_statistics, plot
 
 
 # Load
-with open(f"experiments/experiment_l=3/results/ndom=3.pkl", "rb") as f:
+with open(f"experiments/experiment_l=3/results_gamma=0.2/ndom=3.pkl", "rb") as f:
     info_normal = pickle.load(f)
 with open(f"experiments/experiment_assump_violated/results/same_errors.pkl", "rb") as f:
     info_same_errors = pickle.load(f)

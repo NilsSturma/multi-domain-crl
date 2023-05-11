@@ -90,18 +90,18 @@ def get_statistics(info):
         #upper_number_shared[s_ix] = np.nanquantile(number_shared, 0.75)
 
     result = {}
-    result["too_many_shared_rate"] = {"mean": too_many_shared_rate, 
-                                      "lower": too_many_shared_rate-too_many_shared_std,
-                                      "upper": too_many_shared_rate+too_many_shared_std}
-    result["number_shared"] = {"mean": avg_number_shared, 
-                               "lower": avg_number_shared-std_number_shared,
-                               "upper": avg_number_shared+std_number_shared}
-    result["mixing_error"] = {"mean": mixing_error_median, 
-                              "lower": mixing_error_lower,
-                              "upper": mixing_error_upper}
-    result["graph_error"] = {"mean": graph_error_median, 
-                             "lower": graph_error_lower,
-                             "upper": graph_error_upper}
+    result["too_many_shared_rate"] = {"mean": too_many_shared_rate.tolist(), 
+                                      "lower": (too_many_shared_rate-too_many_shared_std).tolist(),
+                                      "upper": (too_many_shared_rate+too_many_shared_std).tolist()}
+    result["number_shared"] = {"mean": avg_number_shared.tolist(), 
+                               "lower": (avg_number_shared-std_number_shared).tolist(),
+                               "upper": (avg_number_shared+std_number_shared).tolist()}
+    result["mixing_error"] = {"mean": mixing_error_median.tolist(), 
+                              "lower": mixing_error_lower.tolist(),
+                              "upper": mixing_error_upper.tolist()}
+    result["graph_error"] = {"mean": graph_error_median.tolist(), 
+                             "lower": graph_error_lower.tolist(),
+                             "upper": graph_error_upper.tolist()}
     result["total_time"] = total_time
 
     return result
@@ -120,8 +120,8 @@ def plot(nsamples_list, stats2, stats3, stats4, ylabel="Score", path="test.png",
 
     # Stats2
     if (stats2["lower"] is not None) and error_bars:
-        yerr_lower = stats2["mean"] - stats2["lower"]
-        yerr_upper = stats2["upper"] - stats2["mean"]
+        yerr_lower = np.asarray(stats2["mean"]) - np.asarray(stats2["lower"])
+        yerr_upper = np.asarray(stats2["upper"]) - np.asarray(stats2["mean"])
         yerr = np.row_stack((yerr_lower, yerr_upper))
     plt.errorbar(x=nsamples_list, y=stats2["mean"], yerr=yerr,
                  linestyle="-", color="blue", label=labels[0], alpha=0.6, barsabove=True)
@@ -131,8 +131,8 @@ def plot(nsamples_list, stats2, stats3, stats4, ylabel="Score", path="test.png",
 
     # Stats3
     if (stats3["lower"] is not None) and error_bars:
-        yerr_lower = stats3["mean"] - stats3["lower"]
-        yerr_upper = stats3["upper"] - stats3["mean"]
+        yerr_lower = np.asarray(stats3["mean"]) - np.asarray(stats3["lower"])
+        yerr_upper = np.asarray(stats3["upper"]) - np.asarray(stats3["mean"])
         yerr = np.row_stack((yerr_lower, yerr_upper))
     plt.errorbar(x=nsamples_list, y=stats3["mean"], yerr=yerr,
                  linestyle="--", color="red", label=labels[0], alpha=0.6)
@@ -143,8 +143,8 @@ def plot(nsamples_list, stats2, stats3, stats4, ylabel="Score", path="test.png",
     # Stats4
     if stats4 is not None:
         if (stats4["lower"] is not None) and error_bars:
-            yerr_lower = stats4["mean"] - stats4["lower"]
-            yerr_upper = stats4["upper"] - stats4["mean"]
+            yerr_lower = np.asarray(stats4["mean"]) - np.asarray(stats4["lower"])
+            yerr_upper = np.asarray(stats4["upper"]) - np.asarray(stats4["mean"])
             yerr = np.row_stack((yerr_lower, yerr_upper))
         plt.errorbar(x=nsamples_list, y=stats4["mean"], yerr=yerr,
                  linestyle="-.", color="green", label=labels[0], alpha=0.6)
