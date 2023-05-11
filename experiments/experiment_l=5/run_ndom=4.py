@@ -17,7 +17,7 @@ nsamples_list = [1000,2500,5000,10000,25000]
 nexp = 1000
 measure = "ks-test"
 alpha=0.05
-gamma=0.1
+gamma=0.2
 
 model_specs = {
     "nr_doms": 4,
