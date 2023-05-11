@@ -124,7 +124,7 @@ def plot(nsamples_list, stats2, stats3, stats4, ylabel="Score", path="test.png",
         yerr_upper = np.asarray(stats2["upper"]) - np.asarray(stats2["mean"])
         yerr = np.row_stack((yerr_lower, yerr_upper))
     plt.errorbar(x=nsamples_list, y=stats2["mean"], yerr=yerr,
-                 linestyle="-", color="blue", label=labels[0], alpha=0.6, barsabove=True)
+                 linestyle="-", color="blue", label=labels[0], alpha=0.4)
     #plt.plot(nsamples_list, stats2["mean"], "-", color="blue", label=labels[0])
     #if (stats2["lower"] is not None) and error_bars:
     #    plt.fill_between(nsamples_list, stats2["lower"], stats2["upper"], alpha=0.5)
@@ -135,7 +135,7 @@ def plot(nsamples_list, stats2, stats3, stats4, ylabel="Score", path="test.png",
         yerr_upper = np.asarray(stats3["upper"]) - np.asarray(stats3["mean"])
         yerr = np.row_stack((yerr_lower, yerr_upper))
     plt.errorbar(x=nsamples_list, y=stats3["mean"], yerr=yerr,
-                 linestyle="--", color="red", label=labels[0], alpha=0.6)
+                 linestyle="--", color="red", label=labels[1], alpha=0.4, elinewidth=3)
     #plt.plot(nsamples_list, stats3["mean"], "--", color="red", label=labels[1])
     #if (stats3["lower"] is not None) and error_bars:
     #    plt.fill_between(nsamples_list, stats3["lower"], stats3["upper"], alpha=0.5)
@@ -147,7 +147,7 @@ def plot(nsamples_list, stats2, stats3, stats4, ylabel="Score", path="test.png",
             yerr_upper = np.asarray(stats4["upper"]) - np.asarray(stats4["mean"])
             yerr = np.row_stack((yerr_lower, yerr_upper))
         plt.errorbar(x=nsamples_list, y=stats4["mean"], yerr=yerr,
-                 linestyle="-.", color="green", label=labels[0], alpha=0.6)
+                 linestyle="-.", color="green", label=labels[2], alpha=0.4, elinewidth=5)
         #plt.plot(nsamples_list, stats4["mean"], "-.", color="green", label=labels[2])
         #if (stats4["lower"] is not None) and error_bars:
         #    plt.fill_between(nsamples_list, stats4["lower"], stats4["upper"], alpha=0.5)

@@ -26,26 +26,33 @@ stats = {"2": stats2, "3": stats3}
 with open(f"experiments/experiment_l=3/results_gamma={gamma}/stats.json", 'w') as f:
     json.dump(stats, f)
 
+#with open(f"experiments/experiment_l=3/results_gamma={gamma}/stats.json", 'r') as f:
+#    stats = json.load(f)
+
+#nsamples_list = [1000, 2500, 5000, 10000, 25000]
+#stats2 = stats["2"]
+#stats3 = stats["3"]
+
 # Create plots
 plot(nsamples_list, stats2["number_shared"], stats3["number_shared"], None,
                 ylabel="Average of $\hat{\ell}$",
                 path=f"experiments/experiment_l=3/results_gamma={gamma}/avg-shared-nodes.png", 
-                ylim=(-0.1,3.1), error_bars=True)
+                ylim=(-0.1,3.1), legendfontsize=10, error_bars=True)
 
 plot(nsamples_list, stats2["too_many_shared_rate"], stats3["too_many_shared_rate"], None,
                 ylabel="Fraction with $\hat{\ell} > \ell$",
                 path=f"experiments/experiment_l=3/results_gamma={gamma}/too-many-shared-nodes.png", 
-                error_bars=False)
+                error_bars=False, legendfontsize=10)
 
 plot(nsamples_list, stats2["mixing_error"], stats3["mixing_error"], None,
                 ylabel="Median score$_B$",
                 path=f"experiments/experiment_l=3/results_gamma={gamma}/mixing-error.png", 
-                error_bars=True)
+                error_bars=True, legendfontsize=10)
 
 plot(nsamples_list, stats2["graph_error"], stats3["graph_error"], None,
                 ylabel="Median score$_A$",
                 path=f"experiments/experiment_l=3/results_gamma={gamma}/graph-error.png", 
-                error_bars=True)
+                error_bars=True, legendfontsize=10)
 
 # Total time in hours: 
 total_time = stats2["total_time"] + stats3["total_time"]
