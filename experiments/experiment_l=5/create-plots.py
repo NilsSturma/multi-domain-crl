@@ -1,4 +1,5 @@
 # === IMPORTS: BUILT-IN ===
+import json
 import pickle
 
 # === IMPORTS: Local ===
@@ -19,6 +20,10 @@ nsamples_list = info2["metadata"]["nsamples_list"]
 stats2 = get_statistics(info2)
 stats3 = get_statistics(info3)
 stats4 = get_statistics(info4)
+
+stats = {"2": stats2, "3": stats3, "4": stats4}
+with open(f"experiments/experiment_l=5/results/stats.json", 'w') as f:
+    json.dump(stats, f)
 
 # Create plots
 plot(nsamples_list, stats2["number_shared"], stats3["number_shared"], stats4["number_shared"],

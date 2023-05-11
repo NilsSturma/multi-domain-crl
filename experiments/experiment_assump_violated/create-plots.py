@@ -1,4 +1,5 @@
 # === IMPORTS: BUILT-IN ===
+import json
 import pickle
 
 # === IMPORTS: Local ===
@@ -19,6 +20,10 @@ nsamples_list = info_normal["metadata"]["nsamples_list"]
 stats2 = get_statistics(info_normal)
 stats3 = get_statistics(info_same_errors)
 stats4 = get_statistics(info_no_pure_children)
+
+stats = {"2": stats2, "3": stats3, "4": stats4}
+with open(f"experiments/experiment_assump_violated/results/stats.json", 'w') as f:
+    json.dump(stats, f)
 
 # Create plots
 labels=["Assump. satisfied", "Same errors", "No pure children"]
